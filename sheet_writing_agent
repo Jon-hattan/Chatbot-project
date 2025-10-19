@@ -1,0 +1,58 @@
+import os
+from dotenv import load_dotenv
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
+
+from langchain_groq import ChatGroq
+from langchain.agents import initialize_agent, Tool
+from langchain.llms.base import LLM
+
+# Load environment (GROQ KEY)
+load_dotenv()
+SHEET_URL = os.getenv("SHEET_URL")
+MODEL_NAME = os.getenv("MODEL_NAME")
+
+# LLM (Groq)
+llm = ChatGroq(
+    model_name=MODEL_NAME,
+    temperature=0.2
+)
+
+# Google Sheets Access Function (Tool)
+def write_to_google_sheet(data: str):
+    """Write plain text data to the first row of a Google Sheet."""
+    try:
+        scope = [
+            "https://spreadsheets.google.com/feeds",
+            "https://www.googleapis.com/auth/drive"
+        ]
+        creds = ServiceAccountCredentials.from_json_keyfile_name("credentials.json", scope)
+        client = gspread.authorize(creds)
+
+        sheet = client.open_by_url(SHEET_URL).sheet1
+        sheet.append_row([data])
+
+        return f"Wrote to Google Sheet: {data}"
+    except Exception as e:
+        return f"Error: {e}"
+
+# Tool Definition for Agent
+tools = [
+    Tool(
+        name="Google Sheet Writer",
+        func=write_to_google_sheet,
+        description="Use this to write important information to a Google Sheet. Input should be a string."
+    )
+]
+
+# Create Agent with Tools
+agent = initialize_agent(
+    tools,
+    llm,
+    agent="zero-shot-react-description",
+    verbose=True
+)
+
+# Test the Agent
+response = agent.run("Please write this to the spreadsheet: Customer Bob ordered Product A")
+print(response)
