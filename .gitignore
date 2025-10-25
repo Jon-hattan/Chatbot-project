@@ -10,6 +10,4 @@ __pycache__/
 .claude
 
 #config files
-business_profile.yaml
-flow_rules.txt
-intent_prompt.txt
+config/*
