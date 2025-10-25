@@ -1,2 +1,10 @@
+# Secrets and credentials
 .env
 credentials.json
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Claude stuff
+.claude

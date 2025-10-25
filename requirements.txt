@@ -1,0 +1,23 @@
+# Core dependencies
+langchain>=0.1.0
+langchain-core>=0.1.0
+
+# LLM Providers (install the ones you need)
+langchain-groq>=0.0.1        # For Groq (llama3, mixtral, etc.)
+langchain-openai>=0.0.5      # For OpenAI (gpt-4, gpt-3.5-turbo, etc.)
+langchain-anthropic>=0.1.0   # For Anthropic (claude-3-sonnet, etc.)
+
+# Google Sheets integration
+gspread>=5.0.0
+oauth2client>=4.1.3
+
+# Configuration & Environment
+python-dotenv>=1.0.0
+pyyaml>=6.0
+
+# Web framework (for Instagram webhooks)
+fastapi>=0.104.0
+uvicorn>=0.24.0
+
+# Optional: for testing
+pytest>=7.4.0
