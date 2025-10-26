@@ -137,30 +137,3 @@ class ModularChatbot:
             session_id: Unique identifier for the conversation session
         """
         self.session_manager.clear_session(session_id)
-
-
-# Legacy function for backward compatibility
-def process_message(name, handle, message, config, sheet_agent):
-    """
-    Legacy interface - processes message without session management or confirmation.
-    Use ModularChatbot class for full functionality.
-    """
-    from langchain_groq import ChatGroq
-    import os
-
-    # Initialize components
-    llm = ChatGroq(model=os.getenv("MODEL_NAME", "llama3-8b-8192"))
-    intent_detector = IntentDetector(llm, "config/intent_prompt.txt")
-
-    # Simple intent detection without confirmation
-    if intent_detector.detect(message):
-        entry = {
-            "Name": name,
-            "Instagram Handle": handle,
-            "Message": message,
-            "Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M")
-        }
-        sheet_agent.write_row(entry)
-        return config["reply_on_success"].format(name=name)
-    else:
-        return config["reply_on_neutral"].format(name=name)

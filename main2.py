@@ -14,7 +14,8 @@ load_dotenv()
 # --- Load environment ---
 SHEET_URL = os.getenv("SHEET_URL")
 
-# --- Load modular configs ---
+# --- Load configs ---
+# this is where all the configuration for the chatbot will be done
 business_config = load_yaml("config/business_profile.yaml")
 
 # --- Initialize LLM from configuration ---

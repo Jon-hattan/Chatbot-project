@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import Dict, Optional
 
 class BookingDataExtractor:
-    """Extracts booking data from conversational AI responses."""
+    """Extracts booking data from conversational AI responses. Serves as a way to detect when a booking has been made. """
 
     def extract_from_summary(self, response_text: str) -> Optional[Dict[str, str]]:
         """
