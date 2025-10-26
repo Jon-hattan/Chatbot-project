@@ -3,7 +3,7 @@ from oauth2client.service_account import ServiceAccountCredentials
 from datetime import datetime
 
 class GoogleSheetsAgent:
-    def __init__(self, sheet_url, creds_path="credentials.json"):
+    def __init__(self, sheet_url, creds_path="config/credentials.json"):
         scope = [
             "https://spreadsheets.google.com/feeds",
             "https://www.googleapis.com/auth/drive"
