@@ -1,9 +1,56 @@
 import re
 from datetime import datetime
-from typing import Dict, Optional
+from typing import Dict, Optional, List
+
 
 class BookingDataExtractor:
-    """Extracts booking data from conversational AI responses. Serves as a way to detect when a booking has been made. """
+    """
+    Extracts booking data from conversational AI responses.
+    Now fully configurable via business_profile.yaml!
+    """
+
+    def __init__(self, config: dict):
+        """
+        Initialize extractor with configuration.
+
+        Args:
+            config: Business configuration dict containing booking_fields section
+        """
+        self.config = config
+        booking_config = config.get("booking_fields", {})
+
+        # Load configuration
+        self.summary_indicators = booking_config.get("summary_indicators", ["Booking Details:", "📝"])
+        self.confirmation_triggers = booking_config.get("confirmation_triggers", ["BOOKING_CONFIRMED"])
+        self.fields = booking_config.get("fields", [])
+        self.essential_fields = booking_config.get("essential_fields", [])
+
+        # Build regex patterns for each field
+        self._build_field_patterns()
+
+    def _build_field_patterns(self):
+        """Build regex patterns from field configuration."""
+        self.field_patterns = {}
+
+        for field_config in self.fields:
+            field_name = field_config.get("name")
+            patterns = field_config.get("patterns", [])
+            auto_generate = field_config.get("auto_generate", False)
+
+            if auto_generate:
+                # Field is auto-generated (like Timestamp), skip pattern building
+                self.field_patterns[field_name] = None
+                continue
+
+            if not patterns:
+                # If no patterns specified, use field name as pattern
+                patterns = [field_name]
+
+            # Build regex: match any of the alternative patterns
+            # Pattern format: "Field Name:\s*(.+?)(?:\n|•|$)"
+            pattern_alternatives = "|".join([re.escape(p) for p in patterns])
+            regex = rf'(?:{pattern_alternatives}):\s*(.+?)(?:\n|•|$)'
+            self.field_patterns[field_name] = regex
 
     def extract_from_summary(self, response_text: str) -> Optional[Dict[str, str]]:
         """
@@ -16,71 +63,46 @@ class BookingDataExtractor:
             Dictionary with extracted booking data, or None if not found
         """
         # Check if this contains a booking summary
-        if "Booking Details:" not in response_text and "📝" not in response_text:
+        has_indicator = any(indicator in response_text for indicator in self.summary_indicators)
+        if not has_indicator:
             return None
 
         data = {}
 
-        # Extract Parent Name
-        match = re.search(r'Parent Name:\s*(.+?)(?:\n|•|$)', response_text)
-        if match:
-            data['Parent Name'] = match.group(1).strip()
+        # Extract each field using configured patterns
+        for field_config in self.fields:
+            field_name = field_config.get("name")
+            auto_generate = field_config.get("auto_generate", False)
 
-        # Extract Child Name
-        match = re.search(r'(?:Child Name|Student Name):\s*(.+?)(?:\n|•|$)', response_text)
-        if match:
-            data['Child Name'] = match.group(1).strip()
+            if auto_generate:
+                # Auto-generate fields (like Timestamp)
+                if field_name == "Timestamp":
+                    data[field_name] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                continue
 
-        # Extract Child Age
-        match = re.search(r'(?:Child Age|Age):\s*(.+?)(?:\n|•|$)', response_text)
-        if match:
-            data['Child Age'] = match.group(1).strip()
-
-        # Extract Contact
-        match = re.search(r'Contact:\s*(.+?)(?:\n|•|$)', response_text)
-        if match:
-            data['Contact'] = match.group(1).strip()
-
-        # Extract Email
-        match = re.search(r'Email:\s*(.+?)(?:\n|•|$)', response_text)
-        if match:
-            data['Email'] = match.group(1).strip()
-
-        # Extract Timeslot
-        match = re.search(r'Timeslot:\s*(.+?)(?:\n|•|$)', response_text)
-        if match:
-            data['Timeslot'] = match.group(1).strip()
-
-        # Extract Date
-        match = re.search(r'Date:\s*(.+?)(?:\n|•|$)', response_text)
-        if match:
-            data['Date'] = match.group(1).strip()
-
-        # Extract Location
-        match = re.search(r'Location:\s*(.+?)(?:\n|•|$)', response_text)
-        if match:
-            data['Location'] = match.group(1).strip()
-
-        # Add timestamp
-        data['Timestamp'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            # Extract using regex pattern
+            pattern = self.field_patterns.get(field_name)
+            if pattern:
+                match = re.search(pattern, response_text, re.IGNORECASE)
+                if match:
+                    data[field_name] = match.group(1).strip()
 
         # Ensure all required fields exist (with empty string as default)
-        required_fields = [
-            'Parent Name',
-            'Child Name',
-            'Child Age',
-            'Contact',
-            'Email',
-            'Timeslot',
-            'Date',
-            'Location'
-        ]
-        for field in required_fields:
-            if field not in data:
-                data[field] = ""
+        for field_config in self.fields:
+            field_name = field_config.get("name")
+            required = field_config.get("required", False)
+            auto_generate = field_config.get("auto_generate", False)
 
-        # Only return if we have the essential fields
-        if 'Parent Name' in data and 'Contact' in data:
+            if required and not auto_generate and field_name not in data:
+                data[field_name] = ""
+
+        # Validate essential fields are present
+        has_essential = all(
+            field in data and data[field]
+            for field in self.essential_fields
+        )
+
+        if has_essential:
             return data
         else:
             return None
@@ -95,4 +117,4 @@ class BookingDataExtractor:
         Returns:
             True if booking is confirmed
         """
-        return "BOOKING_CONFIRMED" in response_text or "**BOOKING_CONFIRMED**" in response_text
+        return any(trigger in response_text for trigger in self.confirmation_triggers)

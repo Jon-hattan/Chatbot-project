@@ -41,7 +41,7 @@ class ModularChatbot:
         self.confirmation_handler = confirmation_handler or ConfirmationHandler()
         self.response_generator = ResponseGenerator(config)
         self.conversation_agent = conversation_agent
-        self.data_extractor = BookingDataExtractor()
+        self.data_extractor = BookingDataExtractor(config)
 
     def process_message(
         self,
