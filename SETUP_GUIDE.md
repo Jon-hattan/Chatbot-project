@@ -223,9 +223,9 @@ chatbot-project/
 └── modules/
     ├── chatbot_core.py           # Main orchestration
     ├── intent_detector.py        # Intent detection logic
-    ├── confirmation_handler.py   # Confirmation handling
-    ├── response_generator.py     # Response generation
+    ├── conversation_agent.py     # Conversational AI with flow rules
     ├── session_manager.py        # Session state management
+    ├── booking_data_extractor.py # Extract booking data from conversations
     ├── google_sheets_agent.py    # Google Sheets integration
     ├── config_loader.py          # Config loading utilities
     └── context_loader.py         # Context loading utilities

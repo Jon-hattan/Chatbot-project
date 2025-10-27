@@ -1,8 +1,6 @@
 from datetime import datetime
 from typing import Dict, Any, Optional
 from modules.intent_detector import IntentDetector
-from modules.confirmation_handler import ConfirmationHandler
-from modules.response_generator import ResponseGenerator
 from modules.session_manager import SessionManager
 from modules.google_sheets_agent import GoogleSheetsAgent
 from modules.conversation_agent import ConversationAgent
@@ -20,7 +18,6 @@ class ModularChatbot:
         config: dict,
         sheet_agent: GoogleSheetsAgent,
         session_manager: SessionManager = None,
-        confirmation_handler: ConfirmationHandler = None,
         conversation_agent: Optional[ConversationAgent] = None
     ):
         """
@@ -31,15 +28,12 @@ class ModularChatbot:
             config: Business configuration dict
             sheet_agent: Google Sheets logging agent
             session_manager: Session management module (optional, creates default)
-            confirmation_handler: Confirmation handling module (optional, creates default)
             conversation_agent: Conversational AI module (optional, if None uses generic responses)
         """
         self.intent_detector = intent_detector
         self.config = config
         self.sheet_agent = sheet_agent
         self.session_manager = session_manager or SessionManager()
-        self.confirmation_handler = confirmation_handler or ConfirmationHandler()
-        self.response_generator = ResponseGenerator(config)
         self.conversation_agent = conversation_agent
         self.data_extractor = BookingDataExtractor(config)
 
@@ -81,11 +75,15 @@ class ModularChatbot:
             booking_data = self.data_extractor.extract_from_summary(response)
             if booking_data:
                 # Store in session state for when confirmation happens
+                # This keeps data safe even if user gives tentative response
+                # (e.g., "let me check with my child first")
                 state = self.session_manager.get_state(session_id)
                 state['pending_booking_data'] = booking_data
                 self.session_manager.set_state(session_id, state)
 
             # Check if booking was confirmed
+            # Note: BOOKING_CONFIRMED will only appear if user gives clear confirmation
+            # The LLM is instructed NOT to use this trigger for tentative responses
             if self.data_extractor.is_booking_confirmed(response):
                 # Retrieve stored booking data
                 state = self.session_manager.get_state(session_id)
@@ -101,8 +99,8 @@ class ModularChatbot:
 
             return response
         else:
-            # Fallback if no conversation agent
-            return self.response_generator.get_neutral_response(name)
+            # Fallback if no conversation agent (should rarely happen)
+            return "Hello! I'm currently unable to process messages. Please try again later."
 
     def _handle_special_case(self, session_id: str, name: str, message: str) -> str:
         """

@@ -3,7 +3,6 @@ from dotenv import load_dotenv
 from modules.config_loader import load_yaml
 from modules.google_sheets_agent import GoogleSheetsAgent
 from modules.intent_detector import IntentDetector
-from modules.confirmation_handler import ConfirmationHandler
 from modules.session_manager import SessionManager
 from modules.conversation_agent import ConversationAgent
 from modules.chatbot_core import ModularChatbot
@@ -37,9 +36,6 @@ print(f"Using LLM: {provider.upper()} - {model or 'default model'}")
 intent_detector = IntentDetector(llm, "config/intent_prompt.txt")
 sheet_agent = GoogleSheetsAgent(sheet_url=SHEET_URL)
 session_manager = SessionManager(window_size=5)
-confirmation_handler = ConfirmationHandler(
-    confirmation_keywords=business_config.get("confirmation", None)
-)
 conversation_agent = ConversationAgent(llm, business_config, session_manager)
 
 # --- Initialize modular chatbot ---
@@ -48,7 +44,6 @@ chatbot = ModularChatbot(
     config=business_config,
     sheet_agent=sheet_agent,
     session_manager=session_manager,
-    confirmation_handler=confirmation_handler,
     conversation_agent=conversation_agent
 )
 

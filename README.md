@@ -15,12 +15,12 @@ A highly modular chatbot system that detects user intent using LLMs, asks for co
 
 ```
 modules/
-├── intent_detector.py       # LLM-based intent classification
-├── confirmation_handler.py  # Handles yes/no confirmation responses
-├── response_generator.py    # Generates contextual responses
-├── session_manager.py       # Manages conversation state per user
-├── google_sheets_agent.py   # Logs data to Google Sheets
-└── chatbot_core.py          # Orchestrates all modules (ModularChatbot class)
+├── intent_detector.py        # LLM-based intent classification
+├── conversation_agent.py     # Natural conversational AI with flow rules
+├── session_manager.py        # Manages conversation state per user
+├── booking_data_extractor.py # Extracts booking data from conversations
+├── google_sheets_agent.py    # Logs data to Google Sheets
+└── chatbot_core.py           # Orchestrates all modules (ModularChatbot class)
 ```
 
 ## Conversation Flow
@@ -148,17 +148,6 @@ detector = IntentDetector(llm, "config/intent_prompt.txt")
 has_intent = detector.detect("I want to join your class")  # Returns True/False
 ```
 
-### ConfirmationHandler
-
-Determines if a user's response is a confirmation, rejection, or unclear.
-
-```python
-from modules.confirmation_handler import ConfirmationHandler
-
-handler = ConfirmationHandler()
-response_type = handler.get_response_type("yes please")  # "confirmed"
-```
-
 ### SessionManager
 
 Tracks conversation state for each user session.
@@ -169,17 +158,6 @@ from modules.session_manager import SessionManager
 manager = SessionManager()
 manager.set_awaiting_confirmation("user123", {"name": "John"})
 is_waiting = manager.is_awaiting_confirmation("user123")  # True
-```
-
-### ResponseGenerator
-
-Generates contextual responses based on templates.
-
-```python
-from modules.response_generator import ResponseGenerator
-
-generator = ResponseGenerator(config)
-message = generator.get_confirmation_request("John")
 ```
 
 ### GoogleSheetsAgent
@@ -208,17 +186,14 @@ intent_detector = IntentDetector(llm, "config/intent_prompt.txt")
 ### Custom Confirmation Logic
 
 ```python
-# Create custom confirmation handler
-class CustomConfirmationHandler(ConfirmationHandler):
-    def is_confirmation(self, message):
-        # Your custom logic
-        return "absolutely" in message.lower()
+# Create custom conversation agent with different flow rules
+custom_agent = ConversationAgent(llm, config, session_manager, "config/custom_flow_rules.txt")
 
 chatbot = ModularChatbot(
     intent_detector=intent_detector,
     config=config,
     sheet_agent=sheet_agent,
-    confirmation_handler=CustomConfirmationHandler()
+    conversation_agent=custom_agent
 )
 ```
 

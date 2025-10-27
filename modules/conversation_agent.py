@@ -31,6 +31,7 @@ class ConversationAgent:
         bot_name = self.business_config.get("bot_name", "AI Assistant")
         business_description = self.business_config.get("business_description", "")
 
+        # Set up system prompt
         system_prompt = f"""{flow_rules}
 
 BUSINESS INFORMATION:
@@ -41,7 +42,6 @@ Remember:
 - Follow the flow rules STRICTLY
 - Ask ONE question at a time
 - Keep responses SHORT (1-2 sentences unless listing options)
-- Always guide toward booking a $10 trial
 - Be warm, cheerful, use emojis 😊✨🎤"""
 
         prompt = ChatPromptTemplate.from_messages([
