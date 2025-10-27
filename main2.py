@@ -44,7 +44,8 @@ chatbot = ModularChatbot(
     config=business_config,
     sheet_agent=sheet_agent,
     session_manager=session_manager,
-    conversation_agent=conversation_agent
+    conversation_agent=conversation_agent,
+    llm=llm  # For progressive booking data extraction
 )
 
 # --- Simulated chat loop for testing ---

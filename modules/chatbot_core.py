@@ -18,7 +18,8 @@ class ModularChatbot:
         config: dict,
         sheet_agent: GoogleSheetsAgent,
         session_manager: SessionManager = None,
-        conversation_agent: Optional[ConversationAgent] = None
+        conversation_agent: Optional[ConversationAgent] = None,
+        llm = None
     ):
         """
         Initialize the modular chatbot.
@@ -29,13 +30,15 @@ class ModularChatbot:
             sheet_agent: Google Sheets logging agent
             session_manager: Session management module (optional, creates default)
             conversation_agent: Conversational AI module (optional, if None uses generic responses)
+            llm: LLM instance for progressive data extraction
         """
         self.intent_detector = intent_detector
         self.config = config
         self.sheet_agent = sheet_agent
         self.session_manager = session_manager or SessionManager()
         self.conversation_agent = conversation_agent
-        self.data_extractor = BookingDataExtractor(config)
+        self.data_extractor = BookingDataExtractor(config, llm=llm)
+        self.llm = llm
 
     def process_message(
         self,
@@ -69,6 +72,29 @@ class ModularChatbot:
 
         # Normal conversation - let conversational AI handle it
         if self.conversation_agent:
+            # Increment human message counter
+            human_msg_count = self.session_manager.increment_message_count(session_id)
+
+            # PROGRESSIVE DATA COLLECTION: Extract booking data BEFORE generating response
+            # This ensures extracted data is available when bot decides what to ask next
+            window_size = self.session_manager.window_size
+            if human_msg_count % window_size == 0:
+                # Time to extract! Process current conversation window
+                history = self.session_manager.get_history(session_id)
+                existing_data = self.session_manager.get_collected_data(session_id)
+
+                # Extract new data from conversation
+                new_data = self.data_extractor.extract_from_conversation(
+                    messages=history.messages,
+                    existing_data=existing_data
+                )
+
+                # Merge and update collected data
+                if new_data:
+                    self.session_manager.update_collected_data(session_id, new_data)
+                    print(f"📊 Extracted at message {human_msg_count}: {new_data}")
+
+            # NOW generate response (with updated collected data in context)
             response = self.conversation_agent.get_response(session_id, message)
 
             # Check if response contains a booking summary (store it for later)
@@ -77,8 +103,12 @@ class ModularChatbot:
                 # Store in session state for when confirmation happens
                 # This keeps data safe even if user gives tentative response
                 # (e.g., "let me check with my child first")
+                # Merge with progressively collected data
+                collected = self.session_manager.get_collected_data(session_id)
+                merged_data = {**collected, **booking_data}  # booking_data takes priority
+
                 state = self.session_manager.get_state(session_id)
-                state['pending_booking_data'] = booking_data
+                state['pending_booking_data'] = merged_data
                 self.session_manager.set_state(session_id, state)
 
             # Check if booking was confirmed

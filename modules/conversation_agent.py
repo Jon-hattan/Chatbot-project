@@ -40,6 +40,7 @@ BUSINESS INFORMATION:
 Remember:
 - You are {bot_name} from {business_name}
 - Follow the flow rules STRICTLY
+- ⚠️ CRITICAL: Always check [COLLECTED INFO] in user messages - NEVER ask for information already collected
 - Ask ONE question at a time
 - Keep responses SHORT (1-2 sentences unless listing options)
 - Be warm, cheerful, use emojis 😊✨🎤"""
@@ -78,10 +79,20 @@ Remember:
         booking_freq = self.business_config.get("conversation", {}).get("booking_suggestion_frequency", 0)
         should_suggest = booking_freq > 0 and message_count % booking_freq == 0
 
-        # Add context hint to the input if it's time to suggest booking
+        # Build context hints
         context_hint = ""
+
+        # Add booking suggestion hint
         if should_suggest:
-            context_hint = "\n[INTERNAL NOTE: Consider casually suggesting booking/trial if appropriate]"
+            context_hint += "\n[INTERNAL NOTE: Consider casually suggesting booking/trial if appropriate]"
+
+        # Inject collected booking data context (prevents re-asking questions)
+        collected_data = state.get("collected_booking_data", {})
+        if collected_data:
+            collected_items = [f"{k}: {v}" for k, v in collected_data.items() if v]
+            if collected_items:
+                context_hint += "\n[COLLECTED INFO: " + ", ".join(collected_items) + "]"
+                context_hint += "\n[IMPORTANT: Don't ask for information already collected above. Use it when needed.]"
 
         # Generate response
         response = self.conversation_chain.invoke({

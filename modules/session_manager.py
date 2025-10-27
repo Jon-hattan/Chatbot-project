@@ -56,7 +56,9 @@ class SessionManager:
             self.session_states[session_id] = {
                 "awaiting_confirmation": False,
                 "pending_data": None,
-                "last_intent": None
+                "last_intent": None,
+                "collected_booking_data": {},  # Progressive booking data collection
+                "human_message_count": 0  # Track when to trigger extraction
             }
         return self.session_states[session_id]
 
@@ -119,6 +121,49 @@ class SessionManager:
             Pending data dict or None
         """
         return self.get_state(session_id).get("pending_data")
+
+    def get_collected_data(self, session_id: str) -> Dict[str, Any]:
+        """
+        Get the progressively collected booking data for a session.
+
+        Args:
+            session_id: Unique identifier for the session
+
+        Returns:
+            Dictionary of collected booking fields
+        """
+        return self.get_state(session_id).get("collected_booking_data", {})
+
+    def update_collected_data(self, session_id: str, new_data: Dict[str, Any]):
+        """
+        Update collected booking data for a session (merges with existing).
+
+        Args:
+            session_id: Unique identifier for the session
+            new_data: New data to merge into collected data
+        """
+        state = self.get_state(session_id)
+        existing = state.get("collected_booking_data", {})
+        # Merge: new_data takes priority but doesn't overwrite with empty values
+        merged = {**existing, **{k: v for k, v in new_data.items() if v}}
+        state["collected_booking_data"] = merged
+        self.set_state(session_id, state)
+
+    def increment_message_count(self, session_id: str) -> int:
+        """
+        Increment and return the human message count.
+
+        Args:
+            session_id: Unique identifier for the session
+
+        Returns:
+            Updated message count
+        """
+        state = self.get_state(session_id)
+        count = state.get("human_message_count", 0) + 1
+        state["human_message_count"] = count
+        self.set_state(session_id, state)
+        return count
 
     def clear_session(self, session_id: str):
         """
