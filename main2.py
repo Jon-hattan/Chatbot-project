@@ -1,4 +1,6 @@
+# -*- coding: utf-8 -*-
 import os
+import sys
 from dotenv import load_dotenv
 from modules.config_loader import load_yaml
 from modules.google_sheets_agent import GoogleSheetsAgent
@@ -7,6 +9,14 @@ from modules.session_manager import SessionManager
 from modules.conversation_agent import ConversationAgent
 from modules.chatbot_core import ModularChatbot
 from modules.llm_factory import get_llm, get_recommended_model
+
+# Fix Windows console encoding for emoji support
+try:
+    sys.stdout.reconfigure(encoding='utf-8')
+except AttributeError:
+    # Python < 3.7
+    import codecs
+    sys.stdout = codecs.getwriter('utf-8')(sys.stdout.buffer, 'strict')
 
 load_dotenv()
 
