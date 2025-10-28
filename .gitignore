@@ -1,6 +1,6 @@
 # Secrets and credentials
 .env
-credentials.json
+config/credentials.json
 
 # Python cache
 __pycache__/
@@ -8,6 +8,3 @@ __pycache__/
 
 # Claude stuff
 .claude
-
-#config files
-config/*
