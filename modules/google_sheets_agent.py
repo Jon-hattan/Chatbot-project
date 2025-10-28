@@ -1,18 +1,30 @@
 import gspread
 from google.oauth2.service_account import Credentials
 from datetime import datetime
+import json
+import os
 
 class GoogleSheetsAgent:
-    def __init__(self, sheet_url, creds_path="config/credentials.json"):
+    def __init__(self, sheet_url):
+        # Read service account JSON from environment variable
+        creds_json = os.getenv("GOOGLE_CREDENTIALS_JSON")
+
+        if not creds_json:
+            raise ValueError("Missing GOOGLE_CREDENTIALS_JSON environment variable")
+
+        # Convert JSON string to dict
+        creds_dict = json.loads(creds_json)
+
         scope = [
             "https://spreadsheets.google.com/feeds",
             "https://www.googleapis.com/auth/drive"
         ]
-        creds = Credentials.from_service_account_file(creds_path, scopes=scope)
+
+        # Create credentials from JSON dict
+        creds = Credentials.from_service_account_info(creds_dict, scopes=scope)
         client = gspread.authorize(creds)
         self.sheet = client.open_by_url(sheet_url).sheet1
 
-        # Define fixed column order for booking data
         self.COLUMN_ORDER = [
             'Parent Name',
             'Child Name',
