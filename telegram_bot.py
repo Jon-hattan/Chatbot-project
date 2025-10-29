@@ -23,6 +23,7 @@ from modules.session_manager import SessionManager
 from modules.conversation_agent import ConversationAgent
 from modules.chatbot_core import ModularChatbot
 from modules.llm_factory import get_llm, get_recommended_model
+from modules.input_sanitizer import InputSanitizer
 
 # Load environment
 load_dotenv()
@@ -49,8 +50,12 @@ conversation_agent = ConversationAgent(llm, business_config, session_manager)
 # Initialize chatbot without bot_application first (will be set later)
 chatbot = None
 
+# Initialize input sanitizer
+sanitizer = InputSanitizer(max_length=business_config.get("security", {}).get("input_sanitization", {}).get("max_length", 500))
+
 print(f"✅ Chatbot configuration loaded: {business_config['business_name']}")
 print(f"✅ Using LLM: {provider.upper()} - {model or 'default model'}")
+print(f"✅ Input sanitizer initialized")
 
 
 # ===== TELEGRAM HANDLERS =====
@@ -106,6 +111,17 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         handle = user.username or f"telegram_{user.id}"
         user_username = user.username  # Telegram username for moderator notifications
         message = update.message.text
+
+        # Check input sanitization (prompt injection detection)
+        security_config = business_config.get("security", {})
+        if security_config.get("input_sanitization", {}).get("enabled", True):
+            if not sanitizer.is_safe(message):
+                await update.message.reply_text(sanitizer.get_blocked_message())
+                session_manager.track_suspicious_activity(session_id, "prompt_injection_attempt")
+                return  # Exit early, block malicious input
+
+            # Sanitize the message
+            message = sanitizer.sanitize(message)
 
         # Check rate limit before processing
         rate_limit_config = business_config.get("rate_limiting", {})
