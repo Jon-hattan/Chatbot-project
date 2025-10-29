@@ -70,27 +70,27 @@ async def clear_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("✅ Session cleared! Let's start fresh. 😊")
 
 
-async def groupid_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handle /groupid command - show chat ID for groups"""
-    chat = update.effective_chat
-    chat_id = chat.id
-    chat_type = chat.type
+# async def groupid_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+#     """Handle /groupid command - show chat ID for groups"""
+#     chat = update.effective_chat
+#     chat_id = chat.id
+#     chat_type = chat.type
 
-    if chat_type in ['group', 'supergroup']:
-        # It's a group - show the ID
-        await update.message.reply_text(
-            f"📋 Group Chat ID: `{chat_id}`\n\n"
-            f"Add this to your .env file as:\n"
-            f"`MODERATOR_CHAT_ID={chat_id}`",
-            parse_mode="Markdown"
-        )
-    else:
-        # Private chat
-        await update.message.reply_text(
-            f"ℹ️ This command only works in groups!\n\n"
-            f"Your personal chat ID is: `{chat_id}`",
-            parse_mode="Markdown"
-        )
+#     if chat_type in ['group', 'supergroup']:
+#         # It's a group - show the ID
+#         await update.message.reply_text(
+#             f"📋 Group Chat ID: `{chat_id}`\n\n"
+#             f"Add this to your .env file as:\n"
+#             f"`MODERATOR_CHAT_ID={chat_id}`",
+#             parse_mode="Markdown"
+#         )
+#     else:
+#         # Private chat
+#         await update.message.reply_text(
+#             f"ℹ️ This command only works in groups!\n\n"
+#             f"Your personal chat ID is: `{chat_id}`",
+#             parse_mode="Markdown"
+#         )
 
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -189,7 +189,7 @@ async def main():
         # Add command handlers
         app.add_handler(CommandHandler("start", start_command))
         app.add_handler(CommandHandler("clear", clear_command))
-        app.add_handler(CommandHandler("groupid", groupid_command))
+        # app.add_handler(CommandHandler("groupid", groupid_command))
 
         # Add message handler (for all text messages)
         app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
