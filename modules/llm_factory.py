@@ -53,7 +53,7 @@ def _get_groq_llm(model: Optional[str] = None, api_key: Optional[str] = None):
     return ChatGroq(
         model=model,
         api_key=api_key,
-        temperature=0.7
+        temperature=0.2
     )
 
 
@@ -77,7 +77,7 @@ def _get_openai_llm(model: Optional[str] = None, api_key: Optional[str] = None):
     return ChatOpenAI(
         model=model,
         api_key=api_key,
-        temperature=0.7
+        temperature=0.2
     )
 
 
@@ -101,7 +101,7 @@ def _get_anthropic_llm(model: Optional[str] = None, api_key: Optional[str] = Non
     return ChatAnthropic(
         model=model,
         api_key=api_key,
-        temperature=0.7
+        temperature=0.2
     )
 
 
