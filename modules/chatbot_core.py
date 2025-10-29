@@ -154,9 +154,17 @@ class ModularChatbot:
             print("⚠️ Warning: Cannot notify moderator - bot application not available")
             return
 
-        moderator_username = os.getenv("MODERATOR_USERNAME")
-        if not moderator_username:
-            print("⚠️ Warning: MODERATOR_USERNAME not set in .env")
+        moderator_chat_id = os.getenv("MODERATOR_CHAT_ID")
+        if not moderator_chat_id:
+            print("⚠️ Warning: MODERATOR_CHAT_ID not set in .env")
+            print("   Add your bot to a group and use /groupid to get the chat ID")
+            return
+
+        # Convert to integer (group chat IDs are negative numbers)
+        try:
+            chat_id = int(moderator_chat_id)
+        except ValueError:
+            print(f"❌ Error: MODERATOR_CHAT_ID must be a number, got: {moderator_chat_id}")
             return
 
         # Generate chat summary
@@ -211,15 +219,16 @@ class ModularChatbot:
 *Please contact this user via WhatsApp or Telegram to assist them.*"""
 
         try:
-            # Send notification to moderator
+            # Send notification to moderator/group
             await self.bot_application.bot.send_message(
-                chat_id=f"@{moderator_username}",
+                chat_id=chat_id,
                 text=notification,
                 parse_mode="Markdown"
             )
-            print(f"✅ Moderator notification sent for {user_handle}")
+            print(f"✅ Moderator notification sent to chat {chat_id} for {user_handle}")
         except Exception as e:
             print(f"❌ Failed to send moderator notification: {e}")
+            print(f"   Make sure the bot is added to the group/chat with ID {chat_id}")
 
     def _handle_special_case(self, session_id: str, name: str, message: str, user_username: str = None) -> str:
         """
