@@ -46,16 +46,10 @@ sheet_agent = GoogleSheetsAgent(sheet_url=SHEET_URL)
 session_manager = SessionManager(window_size=5)
 conversation_agent = ConversationAgent(llm, business_config, session_manager)
 
-chatbot = ModularChatbot(
-    intent_detector=intent_detector,
-    config=business_config,
-    sheet_agent=sheet_agent,
-    session_manager=session_manager,
-    conversation_agent=conversation_agent,
-    llm=llm
-)
+# Initialize chatbot without bot_application first (will be set later)
+chatbot = None
 
-print(f"✅ Chatbot initialized: {business_config['business_name']}")
+print(f"✅ Chatbot configuration loaded: {business_config['business_name']}")
 print(f"✅ Using LLM: {provider.upper()} - {model or 'default model'}")
 
 
@@ -87,6 +81,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         session_id = str(user.id)  # Telegram user ID as session
         name = user.first_name or "User"
         handle = user.username or f"telegram_{user.id}"
+        user_username = user.username  # Telegram username for moderator notifications
         message = update.message.text
 
         # Process through existing chatbot
@@ -94,7 +89,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             session_id=session_id,
             name=name,
             handle=handle,
-            message=message
+            message=message,
+            user_username=user_username
         )
 
         # Send response back to Telegram
@@ -153,6 +149,19 @@ async def main():
     try:
         # Create application
         app = Application.builder().token(token).build()
+
+        # Initialize chatbot with bot application
+        global chatbot
+        chatbot = ModularChatbot(
+            intent_detector=intent_detector,
+            config=business_config,
+            sheet_agent=sheet_agent,
+            session_manager=session_manager,
+            conversation_agent=conversation_agent,
+            llm=llm,
+            bot_application=app
+        )
+        print(f"✅ Chatbot initialized with bot application")
 
         # Add command handlers
         app.add_handler(CommandHandler("start", start_command))

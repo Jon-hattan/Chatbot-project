@@ -5,6 +5,8 @@ from modules.session_manager import SessionManager
 from modules.google_sheets_agent import GoogleSheetsAgent
 from modules.conversation_agent import ConversationAgent
 from modules.booking_data_extractor import BookingDataExtractor
+import os
+import asyncio
 
 class ModularChatbot:
     """
@@ -19,7 +21,8 @@ class ModularChatbot:
         sheet_agent: GoogleSheetsAgent,
         session_manager: SessionManager = None,
         conversation_agent: Optional[ConversationAgent] = None,
-        llm = None
+        llm = None,
+        bot_application = None
     ):
         """
         Initialize the modular chatbot.
@@ -31,6 +34,7 @@ class ModularChatbot:
             session_manager: Session management module (optional, creates default)
             conversation_agent: Conversational AI module (optional, if None uses generic responses)
             llm: LLM instance for progressive data extraction
+            bot_application: Telegram bot application instance for sending messages
         """
         self.intent_detector = intent_detector
         self.config = config
@@ -39,13 +43,15 @@ class ModularChatbot:
         self.conversation_agent = conversation_agent
         self.data_extractor = BookingDataExtractor(config, llm=llm)
         self.llm = llm
+        self.bot_application = bot_application
 
     def process_message(
         self,
         session_id: str,
         name: str,
         handle: str,
-        message: str
+        message: str,
+        user_username: str = None
     ) -> str:
         """
         Process a user message through the modular chatbot pipeline.
@@ -59,6 +65,7 @@ class ModularChatbot:
             name: User's name
             handle: User's Instagram handle or identifier
             message: User's message text
+            user_username: User's Telegram username (optional)
 
         Returns:
             Bot's response message
@@ -68,7 +75,7 @@ class ModularChatbot:
 
         if special_case_detected:
             # Special case - route to human
-            return self._handle_special_case(session_id, name, message)
+            return self._handle_special_case(session_id, name, message, user_username)
 
         # Normal conversation - let conversational AI handle it
         if self.conversation_agent:
@@ -132,7 +139,89 @@ class ModularChatbot:
             # Fallback if no conversation agent (should rarely happen)
             return "Hello! I'm currently unable to process messages. Please try again later."
 
-    def _handle_special_case(self, session_id: str, name: str, message: str) -> str:
+    async def _notify_moderator(self, session_id: str, user_name: str, user_username: str, escalation_type: str, message: str):
+        """
+        Notify the moderator about a human escalation.
+
+        Args:
+            session_id: Unique identifier for the conversation session
+            user_name: User's display name
+            user_username: User's Telegram username
+            escalation_type: Type of escalation (performance/private/generic)
+            message: User's original message
+        """
+        if not self.bot_application:
+            print("⚠️ Warning: Cannot notify moderator - bot application not available")
+            return
+
+        moderator_username = os.getenv("MODERATOR_USERNAME")
+        if not moderator_username:
+            print("⚠️ Warning: MODERATOR_USERNAME not set in .env")
+            return
+
+        # Generate chat summary
+        history = self.session_manager.get_history(session_id)
+        messages = history.messages[-10:]  # Get last 10 messages for context
+
+        # Create a brief summary
+        if len(messages) > 0:
+            conversation_context = "\n".join([
+                f"{'User' if i % 2 == 0 else 'Bot'}: {msg.content[:100]}..."
+                if len(msg.content) > 100 else f"{'User' if i % 2 == 0 else 'Bot'}: {msg.content}"
+                for i, msg in enumerate(messages[-6:])  # Last 6 messages
+            ])
+        else:
+            conversation_context = "No prior conversation history"
+
+        # Determine what's needed based on escalation type
+        if escalation_type == "performance":
+            needed_from_human = "Handle performance/event inquiry - connect with artist manager Ryan"
+        elif escalation_type == "private":
+            needed_from_human = "Discuss private 1-on-1 class arrangements and scheduling"
+        else:
+            needed_from_human = "General inquiry that requires human assistance"
+
+        # Get collected data if any
+        collected_data = self.session_manager.get_collected_data(session_id)
+        data_summary = ""
+        if collected_data:
+            data_summary = "\n\n**Collected Info:**\n" + "\n".join([f"• {k}: {v}" for k, v in collected_data.items()])
+
+        # Format username with @
+        user_handle = f"@{user_username}" if user_username else f"User ID: {session_id}"
+
+        # Compose notification message
+        notification = f"""🚨 **Human Escalation Required**
+
+**User:** {user_name} ({user_handle})
+
+**Reason:** {escalation_type.title()} Inquiry
+
+**Latest Message:**
+"{message}"
+
+**Conversation Summary:**
+{conversation_context}
+{data_summary}
+
+**Action Needed:**
+{needed_from_human}
+
+---
+*Please contact this user via WhatsApp or Telegram to assist them.*"""
+
+        try:
+            # Send notification to moderator
+            await self.bot_application.bot.send_message(
+                chat_id=f"@{moderator_username}",
+                text=notification,
+                parse_mode="Markdown"
+            )
+            print(f"✅ Moderator notification sent for {user_handle}")
+        except Exception as e:
+            print(f"❌ Failed to send moderator notification: {e}")
+
+    def _handle_special_case(self, session_id: str, name: str, message: str, user_username: str = None) -> str:
         """
         Handle special cases that need human escalation.
 
@@ -140,6 +229,7 @@ class ModularChatbot:
             session_id: Unique identifier for the conversation session
             name: User's name
             message: User's message
+            user_username: User's Telegram username (optional)
 
         Returns:
             Escalation message
@@ -147,15 +237,23 @@ class ModularChatbot:
         # Check if it's a performance or private class enquiry
         message_lower = message.lower()
 
+        escalation_type = "generic"
         if any(word in message_lower for word in ["performance", "event", "party", "hire", "booking", "show", "corporate"]):
-            # Performance enquiry
-            return "Let me connect you with our artist manager Ryan who handles performances! 🎤 He'll be in touch with you shortly via WhatsApp. 😊"
+            escalation_type = "performance"
+            response = "Let me connect you with our artist manager Ryan who handles performances! 🎤 He'll be in touch with you shortly via WhatsApp. 😊"
         elif any(word in message_lower for word in ["private", "1-on-1", "one-on-one", "individual"]):
-            # Private class enquiry
-            return "Great! For private 1-on-1 classes, we'll need to discuss your specific needs and schedule. 😊 A team member will contact you via WhatsApp to arrange the details!"
+            escalation_type = "private"
+            response = "Great! For private 1-on-1 classes, we'll need to discuss your specific needs and schedule. 😊 A team member will contact you via WhatsApp to arrange the details!"
         else:
-            # Generic escalation
-            return "I'll connect you with our team who can help you with this! They'll be in touch via WhatsApp shortly. 😊"
+            response = "I'll connect you with our team who can help you with this! They'll be in touch via WhatsApp shortly. 😊"
+
+        # Notify moderator asynchronously
+        if self.bot_application:
+            asyncio.create_task(
+                self._notify_moderator(session_id, name, user_username or "unknown", escalation_type, message)
+            )
+
+        return response
 
     def clear_session(self, session_id: str):
         """
