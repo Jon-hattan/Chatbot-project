@@ -45,7 +45,7 @@ class ModularChatbot:
         self.llm = llm
         self.bot_application = bot_application
 
-    def process_message(
+    async def process_message(
         self,
         session_id: str,
         name: str,
@@ -75,7 +75,7 @@ class ModularChatbot:
 
         if special_case_detected:
             # Special case - route to human
-            return self._handle_special_case(session_id, name, message, user_username)
+            return await self._handle_special_case(session_id, name, message, user_username)
 
         # Normal conversation - let conversational AI handle it
         if self.conversation_agent:
@@ -230,7 +230,7 @@ class ModularChatbot:
             print(f"❌ Failed to send moderator notification: {e}")
             print(f"   Make sure the bot is added to the group/chat with ID {chat_id}")
 
-    def _handle_special_case(self, session_id: str, name: str, message: str, user_username: str = None) -> str:
+    async def _handle_special_case(self, session_id: str, name: str, message: str, user_username: str = None) -> str:
         """
         Handle special cases that need human escalation.
 
@@ -256,11 +256,9 @@ class ModularChatbot:
         else:
             response = "I'll connect you with our team who can help you with this! They'll be in touch via WhatsApp shortly. 😊"
 
-        # Notify moderator asynchronously
+        # Notify moderator
         if self.bot_application:
-            asyncio.create_task(
-                self._notify_moderator(session_id, name, user_username or "unknown", escalation_type, message)
-            )
+            await self._notify_moderator(session_id, name, user_username or "unknown", escalation_type, message)
 
         return response
 

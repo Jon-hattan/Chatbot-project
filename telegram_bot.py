@@ -108,7 +108,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         message = update.message.text
 
         # Process through existing chatbot
-        response = chatbot.process_message(
+        response = await chatbot.process_message(
             session_id=session_id,
             name=name,
             handle=handle,
