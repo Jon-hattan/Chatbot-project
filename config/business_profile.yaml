@@ -115,3 +115,14 @@ booking_fields:
 
   # Essential fields that MUST be present for booking to be valid
   essential_fields: ["Parent Name", "Contact", "Timeslot"]
+
+# Rate Limiting & Spam Protection
+rate_limiting:
+  enabled: true
+  time_window: 10          # seconds - window to count messages
+  max_messages: 5          # max messages allowed in time window
+  warning_threshold: 4     # messages before showing warning
+  block_duration: 300      # seconds (5 minutes) - how long to block
+  messages:
+    warning: "⚠️ Please slow down! You're sending messages too quickly. Let's have a natural conversation. 😊"
+    blocked: "🚫 I will not engage with spammers. Please take a break and come back later when you're ready to have a proper conversation."

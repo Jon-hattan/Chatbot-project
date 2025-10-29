@@ -1,5 +1,7 @@
 from langchain_core.chat_history import InMemoryChatMessageHistory
 from typing import Dict, Any, Optional
+from collections import deque
+import time
 
 class SessionManager:
     """Manages per-session chat histories and conversation state."""
@@ -58,7 +60,14 @@ class SessionManager:
                 "pending_data": None,
                 "last_intent": None,
                 "collected_booking_data": {},  # Progressive booking data collection
-                "human_message_count": 0  # Track when to trigger extraction
+                "human_message_count": 0,  # Track when to trigger extraction
+                "rate_limit": {
+                    "message_timestamps": deque(maxlen=20),  # Last 20 message times
+                    "warned": False,
+                    "blocked": False,
+                    "block_timestamp": None,
+                    "violation_count": 0
+                }
             }
         return self.session_states[session_id]
 
@@ -164,6 +173,89 @@ class SessionManager:
         state["human_message_count"] = count
         self.set_state(session_id, state)
         return count
+
+    def check_rate_limit(self, session_id: str, config: dict) -> Optional[str]:
+        """
+        Check if user is rate limited and return warning/block message if needed.
+
+        Args:
+            session_id: Unique identifier for the session
+            config: Rate limiting configuration dict
+
+        Returns:
+            None if OK to proceed, or message string if rate limited
+        """
+        if not config.get("enabled", False):
+            return None
+
+        state = self.get_state(session_id)
+        rate_state = state["rate_limit"]
+        current_time = time.time()
+
+        # Check if user is blocked
+        if rate_state["blocked"]:
+            block_time = rate_state["block_timestamp"]
+            block_duration = config.get("block_duration", 300)
+
+            # Check if block duration has passed
+            if current_time - block_time < block_duration:
+                return config["messages"]["blocked"]
+            else:
+                # Block expired, reset state
+                self.reset_rate_limit(session_id)
+
+        # Record current message timestamp
+        rate_state["message_timestamps"].append(current_time)
+
+        # Count messages in time window
+        time_window = config.get("time_window", 10)
+        cutoff_time = current_time - time_window
+        recent_messages = sum(1 for ts in rate_state["message_timestamps"] if ts > cutoff_time)
+
+        max_messages = config.get("max_messages", 5)
+        warning_threshold = config.get("warning_threshold", 4)
+
+        # Check for violation
+        if recent_messages >= max_messages:
+            if not rate_state["warned"]:
+                # First violation - warn
+                rate_state["warned"] = True
+                rate_state["violation_count"] += 1
+                self.set_state(session_id, state)
+                return config["messages"]["warning"]
+            else:
+                # Already warned - block
+                rate_state["blocked"] = True
+                rate_state["block_timestamp"] = current_time
+                rate_state["violation_count"] += 1
+                self.set_state(session_id, state)
+                return config["messages"]["blocked"]
+
+        # Check for warning threshold (proactive warning)
+        if recent_messages >= warning_threshold and not rate_state["warned"]:
+            rate_state["warned"] = True
+            self.set_state(session_id, state)
+            return config["messages"]["warning"]
+
+        # All good
+        return None
+
+    def reset_rate_limit(self, session_id: str):
+        """Reset rate limiting state for a session."""
+        state = self.get_state(session_id)
+        state["rate_limit"] = {
+            "message_timestamps": deque(maxlen=20),
+            "warned": False,
+            "blocked": False,
+            "block_timestamp": None,
+            "violation_count": state["rate_limit"].get("violation_count", 0)  # Keep count
+        }
+        self.set_state(session_id, state)
+
+    def is_blocked(self, session_id: str) -> bool:
+        """Check if a session is currently blocked."""
+        state = self.get_state(session_id)
+        return state["rate_limit"]["blocked"]
 
     def clear_session(self, session_id: str):
         """

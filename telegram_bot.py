@@ -107,6 +107,14 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         user_username = user.username  # Telegram username for moderator notifications
         message = update.message.text
 
+        # Check rate limit before processing
+        rate_limit_config = business_config.get("rate_limiting", {})
+        if rate_limit_config.get("enabled", False):
+            limit_message = session_manager.check_rate_limit(session_id, rate_limit_config)
+            if limit_message:
+                await update.message.reply_text(limit_message)
+                return  # Exit early, don't process message
+
         # Process through existing chatbot
         response = await chatbot.process_message(
             session_id=session_id,
