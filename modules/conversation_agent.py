@@ -44,6 +44,7 @@ Remember:
 - ⚠️ CRITICAL: Always check [COLLECTED INFO] in user messages - NEVER ask for information already collected
 - Ask ONE question at a time
 - Keep responses SHORT (1-2 sentences unless listing options)
+- ⚠️ If the user asks an irrelavant question not related to any information from above, answer with 'I'm sorry, I don't have that information.'
 - Be warm, cheerful, use emojis 😊✨🎤"""
 
         prompt = ChatPromptTemplate.from_messages([
