@@ -1,5 +1,6 @@
 from langchain_core.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate
 from modules.context_loader import load_context
+from modules.text_utils import strip_think_tags
 
 class IntentDetector:
     """Modular intent detector using LLM-based classification."""
@@ -34,7 +35,9 @@ class IntentDetector:
         Returns:
             True if intent is detected, False otherwise
         """
-        result = self.chain.invoke({"input": message}).content.strip().upper()
+        # Get response and strip any think tags
+        raw_result = self.chain.invoke({"input": message}).content
+        result = strip_think_tags(raw_result).strip().upper()
 
         # Sanitize output - default to False if unclear
         if "YES" in result:

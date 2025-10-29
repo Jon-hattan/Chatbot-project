@@ -1,6 +1,7 @@
 from langchain_core.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate, MessagesPlaceholder
 from langchain_core.messages import HumanMessage, AIMessage
 from modules.context_loader import load_context
+from modules.text_utils import strip_think_tags
 
 class ConversationAgent:
     """Handles natural conversational responses using LLM with flow rules."""
@@ -100,11 +101,14 @@ Remember:
             "history": history.messages
         })
 
+        # Strip think tags from response
+        cleaned_response = strip_think_tags(response.content)
+
         # Update chat history
         history.add_message(HumanMessage(content=message))
-        history.add_message(AIMessage(content=response.content))
+        history.add_message(AIMessage(content=cleaned_response))
 
         # Trim history to keep it manageable
         self.session_manager.trim_history(session_id)
 
-        return response.content
+        return cleaned_response
