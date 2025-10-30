@@ -60,7 +60,7 @@ intent:
 # Conversation settings
 conversation:
   # How often to suggest booking (every N messages). Set to 0 to never auto-suggest
-  booking_suggestion_frequency: 2
+  booking_suggestion_frequency: 4
   # Be pushy about collecting age?
   pushy_age_collection: false
 
