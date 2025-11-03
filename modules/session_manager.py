@@ -1,21 +1,35 @@
 from langchain_core.chat_history import InMemoryChatMessageHistory
 from typing import Dict, Any, Optional
-from collections import deque
+from collections import deque, OrderedDict
 import time
 
 class SessionManager:
     """Manages per-session chat histories and conversation state."""
 
-    def __init__(self, window_size: int = 3):
+    def __init__(self, window_size: int = 3, maxsize: int = 6000):
         """
         Initialize the session manager.
 
         Args:
             window_size: Maximum number of message exchanges to keep in history
+            maxsize: Maximum number of sessions to keep in memory (LRU cache)
         """
-        self.sessions = {}
-        self.session_states = {}  # Track conversation state for each session
+        self.sessions = OrderedDict()
+        self.session_states = OrderedDict()  # Track conversation state for each session
         self.window_size = window_size
+        self.maxsize = maxsize
+
+    def _evict_lru(self):
+        """
+        Evict the least recently used session if maxsize is reached.
+        Removes from both sessions and session_states dictionaries.
+        """
+        if self.maxsize and len(self.sessions) >= self.maxsize:
+            # Remove oldest session (first item in OrderedDict)
+            evicted_id, _ = self.sessions.popitem(last=False)
+            if evicted_id in self.session_states:
+                self.session_states.pop(evicted_id, None)
+            print(f"⚠️ LRU Cache: Evicted session {evicted_id} (maxsize={self.maxsize} reached)")
 
     def get_history(self, session_id: str) -> InMemoryChatMessageHistory:
         """
@@ -28,7 +42,12 @@ class SessionManager:
             Chat history object for the session
         """
         if session_id not in self.sessions:
+            # Evict LRU session if at capacity
+            self._evict_lru()
             self.sessions[session_id] = InMemoryChatMessageHistory()
+        else:
+            # Move to end (mark as recently used)
+            self.sessions.move_to_end(session_id)
         return self.sessions[session_id]
 
     def trim_history(self, session_id: str):
@@ -55,6 +74,13 @@ class SessionManager:
             State dictionary for the session
         """
         if session_id not in self.session_states:
+            # Evict LRU session if at capacity
+            if self.maxsize and len(self.session_states) >= self.maxsize:
+                evicted_id, _ = self.session_states.popitem(last=False)
+                if evicted_id in self.sessions:
+                    self.sessions.pop(evicted_id, None)
+                print(f"⚠️ LRU Cache: Evicted session state {evicted_id} (maxsize={self.maxsize} reached)")
+
             self.session_states[session_id] = {
                 "awaiting_confirmation": False,
                 "pending_data": None,
@@ -69,6 +95,9 @@ class SessionManager:
                     "violation_count": 0
                 }
             }
+        else:
+            # Move to end (mark as recently used)
+            self.session_states.move_to_end(session_id)
         return self.session_states[session_id]
 
     def set_state(self, session_id: str, state: Dict[str, Any]):
