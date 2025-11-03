@@ -108,16 +108,14 @@ class DateValidator:
 
 User said: "{user_input}"
 
-What explicit date is the user referring to? Return ONLY the date in DD/MM/YYYY format.
+Parse the date the user is referring to and return it in DD/MM/YYYY format.
 
-Examples:
-- If today is Monday, 4 November 2024:
-  - "next Sunday" → 17/11/2024 (the Sunday after this coming Sunday)
-  - "this Sunday" → 10/11/2024 (this coming Sunday)
-  - "this coming Friday" → 08/11/2024
-  - "tomorrow" → 05/11/2024
-  - "a week from now" → 11/11/2024
-  - "the Friday after next" → 15/11/2024
+Rules:
+- "this Friday" or "this coming Friday" = the next upcoming Friday from today
+- "next Friday" = the Friday after this coming Friday (one week later than "this Friday")
+- "tomorrow" = the day after today
+- "next week" = 7 days from today
+- For any day name without "this" or "next", assume they mean the next upcoming occurrence of that day
 
 Return ONLY the date in DD/MM/YYYY format, nothing else. No explanation."""
 
