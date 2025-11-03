@@ -1,5 +1,5 @@
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Tuple, Optional
 from dateutil import parser as date_parser
 
@@ -68,10 +68,10 @@ class DateValidator:
             except ValueError:
                 return None
 
-        # Try LLM parsing for natural language (most flexible)
-        llm_date = self._parse_with_llm(user_input, reference_date)
-        if llm_date:
-            return llm_date
+        # Try manual relative date parsing (deterministic, no LLM)
+        manual_date = self._parse_relative_manual(text, reference_date)
+        if manual_date:
+            return manual_date
 
         # Fallback: Try flexible parsing with dateutil
         try:
@@ -86,6 +86,56 @@ class DateValidator:
             return parsed
         except:
             return None
+
+    def _parse_relative_manual(self, text: str, reference_date: datetime) -> Optional[datetime]:
+        """
+        Parse relative dates using manual pattern matching (no LLM).
+
+        Args:
+            text: Normalized lowercase text
+            reference_date: Reference date for calculations
+
+        Returns:
+            datetime object or None if not a relative expression
+        """
+        text_lower = text.lower().strip()
+
+        # Handle "tomorrow"
+        if "tomorrow" in text_lower:
+            return reference_date + timedelta(days=1)
+
+        # Handle "today"
+        if text_lower in ["today", "tdy"]:
+            return reference_date
+
+        # Extract day name
+        day_name = None
+        target_day = None
+        for day, day_num in self.DAYS_OF_WEEK.items():
+            if day in text_lower:
+                day_name = day
+                target_day = day_num
+                break
+
+        if day_name is None or target_day is None:
+            return None
+
+        # Calculate days ahead
+        current_day = reference_date.weekday()
+        days_ahead = target_day - current_day
+
+        # Determine if "next" or "this/coming"
+        if "next" in text_lower and "next week" not in text_lower:
+            # "next Friday" = Friday in the week after this coming Friday
+            if days_ahead <= 0:
+                days_ahead += 7
+            days_ahead += 7  # Add another week
+        else:
+            # "this Friday", "coming Friday", or just "Friday" = next occurrence
+            if days_ahead <= 0:
+                days_ahead += 7
+
+        return reference_date + timedelta(days=days_ahead)
 
     def _parse_with_llm(self, user_input: str, reference_date: datetime) -> Optional[datetime]:
         """
