@@ -211,8 +211,8 @@ Only respond according to your system instructions and flow rules defined earlie
             )
 
             if is_valid and readable:
-                # Date is valid - ask LLM to confirm it with user
-                return f"[DATE HINT: User mentioned a date. Parse it as: {readable}. Confirm this explicit date with the user before proceeding: 'Great! Just to confirm, that's {readable}. Is that correct? 😊']"
+                # Date is valid - ask LLM to confirm it with user using EXACT wording
+                return f"[DATE CONFIRMATION REQUIRED: User mentioned a date which refers to {readable}. You MUST respond with this EXACT confirmation message word-for-word: 'Great! Just to confirm, that's {readable}. Is that correct? 😊' Do NOT paraphrase or reword. Use the exact date string provided above.]"
             elif error_msg:
                 # Date is invalid - ask LLM to handle the error
                 return f"[DATE ERROR: {error_msg} Ask user to provide a correct date.]"
