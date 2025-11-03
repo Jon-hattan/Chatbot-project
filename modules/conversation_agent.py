@@ -1,7 +1,9 @@
+import re
 from langchain_core.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate, MessagesPlaceholder
 from langchain_core.messages import HumanMessage, AIMessage
 from modules.context_loader import load_context
 from modules.text_utils import strip_think_tags
+from modules.date_validator import DateValidator
 
 class ConversationAgent:
     """Handles natural conversational responses using LLM with flow rules."""
@@ -20,6 +22,7 @@ class ConversationAgent:
         self.business_config = business_config
         self.session_manager = session_manager
         self.flow_rules_path = flow_rules_path
+        self.date_validator = DateValidator(llm=self.llm)
         self.conversation_chain = self._build_chain()
 
     def _build_chain(self):
@@ -109,6 +112,11 @@ Only respond according to your system instructions and flow rules defined earlie
                 context_hint += "\n[COLLECTED INFO: " + ", ".join(collected_items) + "]"
                 context_hint += "\n[IMPORTANT: Don't ask for information already collected above. Use it when needed.]"
 
+        # Check if user just provided a date that needs parsing and confirmation
+        date_hint = self._check_date_in_message(message, collected_data.get("Timeslot"))
+        if date_hint:
+            context_hint += "\n" + date_hint
+
         # Generate response
         response = self.conversation_chain.invoke({
             "input": message + context_hint,
@@ -159,3 +167,58 @@ Only respond according to your system instructions and flow rules defined earlie
                 return True
 
         return False
+
+    def _check_date_in_message(self, message: str, timeslot: str = None) -> str:
+        """
+        Check if user's message contains a date and provide parsing/validation hints.
+
+        Args:
+            message: User's message
+            timeslot: The chosen timeslot (e.g., "Friday 3-4pm")
+
+        Returns:
+            Context hint string for LLM, or empty string if no date detected
+        """
+        # Common date-related keywords
+        date_keywords = [
+            "next", "this", "tomorrow", "sunday", "monday", "tuesday",
+            "wednesday", "thursday", "friday", "saturday",
+            "january", "february", "march", "april", "may", "june",
+            "july", "august", "september", "october", "november", "december",
+            "jan", "feb", "mar", "apr", "jun", "jul", "aug", "sep", "oct", "nov", "dec"
+        ]
+
+        message_lower = message.lower()
+
+        # Check if message likely contains a date
+        has_date = any(keyword in message_lower for keyword in date_keywords)
+
+        # Also check for numeric date patterns (15/11, 15th, etc.)
+        has_numeric_date = bool(re.search(r'\d{1,2}[/\-th\s]', message))
+
+        if not (has_date or has_numeric_date):
+            return ""
+
+        # Try to parse the date
+        if not timeslot:
+            # No timeslot yet, can't validate
+            return ""
+
+        try:
+            is_valid, standardized, readable, error_msg = self.date_validator.parse_and_validate(
+                message,
+                timeslot
+            )
+
+            if is_valid and readable:
+                # Date is valid - ask LLM to confirm it with user
+                return f"[DATE HINT: User mentioned a date. Parse it as: {readable}. Confirm this explicit date with the user before proceeding: 'Great! Just to confirm, that's {readable}. Is that correct? 😊']"
+            elif error_msg:
+                # Date is invalid - ask LLM to handle the error
+                return f"[DATE ERROR: {error_msg} Ask user to provide a correct date.]"
+        except:
+            # Parsing failed, but message seems to contain date
+            # Let LLM handle it naturally
+            pass
+
+        return ""

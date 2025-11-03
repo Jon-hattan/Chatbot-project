@@ -2,6 +2,7 @@ import re
 from datetime import datetime
 from typing import Dict, Optional, List
 from langchain_core.messages import HumanMessage, AIMessage
+from modules.date_validator import DateValidator
 
 
 class BookingDataExtractor:
@@ -32,6 +33,9 @@ class BookingDataExtractor:
         conversation_config = config.get("conversation", {})
         self.progressive_collection = conversation_config.get("progressive_data_collection", True)
         self.extraction_method = conversation_config.get("extraction_method", "hybrid")
+
+        # Initialize date validator with LLM for flexible date parsing
+        self.date_validator = DateValidator(llm=llm)
 
         # Build regex patterns for each field
         self._build_field_patterns()
@@ -103,6 +107,23 @@ class BookingDataExtractor:
 
             if required and not auto_generate and field_name not in data:
                 data[field_name] = ""
+
+        # Validate and standardize date if present
+        if "Date" in data and data["Date"] and "Timeslot" in data and data["Timeslot"]:
+            # Validate date against timeslot
+            is_valid, standardized, readable, error_msg = self.date_validator.parse_and_validate(
+                data["Date"],
+                data["Timeslot"]
+            )
+
+            if is_valid and standardized:
+                # Replace with standardized ddmmyyyy format
+                data["Date"] = standardized
+                print(f"✅ Date validated and standardized: {data['Date']} ({readable})")
+            else:
+                # Date validation failed - log and return None to prevent booking
+                print(f"❌ Date validation failed: {error_msg}")
+                return None
 
         # Validate essential fields are present
         has_essential = all(
