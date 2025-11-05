@@ -134,6 +134,29 @@ class ModularChatbot:
                     self.session_manager.set_state(session_id, state)
                     print(f"✅ Booking logged to Google Sheets for {stored_booking_data.get('Parent Name', 'Unknown')}")
 
+                    # Send test photo after successful booking
+                    try:
+                        photo_path = os.path.join(os.getcwd(), "image.png")
+
+                        if os.path.exists(photo_path):
+                            # session_id is the Telegram user ID (as string)
+                            chat_id = int(session_id)
+
+                            # Send the test photo
+                            if self.bot_application:
+                                await self.bot_application.bot.send_photo(
+                                    chat_id=chat_id,
+                                    photo=open(photo_path, 'rb'),
+                                    caption="🎉 Thank you for booking with 555Beatbox Academy! Please PAYNOW $10 to this QR Code and our team will contact you for confirmation. 🎤"
+                                )
+                                print(f"✅ Test photo sent to user {chat_id}")
+                            else:
+                                print(f"⚠️ Warning: bot_application not available (running in test mode)")
+                        else:
+                            print(f"⚠️ Warning: Test photo not found at {photo_path}")
+                    except Exception as e:
+                        print(f"❌ Failed to send test photo: {e}")
+
             return response
         else:
             # Fallback if no conversation agent (should rarely happen)

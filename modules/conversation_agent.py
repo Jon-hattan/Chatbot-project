@@ -123,6 +123,10 @@ Only respond according to your system instructions and flow rules defined earlie
                 context_hint += "\n[COLLECTED INFO: " + ", ".join(collected_items) + "]"
                 context_hint += "\n[IMPORTANT: Don't ask for information already collected above. Use it when needed.]"
 
+        # Inject date context if timeslot has been collected (helps with relative date understanding)
+        if collected_data.get("Timeslot"):
+            context_hint += "\n" + self._generate_date_context()
+
         # Check if user just provided a date that needs parsing and confirmation
         date_hint = self._check_date_in_message(message, collected_data.get("Timeslot"))
         if date_hint:
@@ -246,3 +250,101 @@ Respond to the user explaining the date error and ask for a correct date."""
             pass
 
         return ""
+
+    def _get_this_weekend(self, today):
+        """
+        Get dates for the upcoming Friday, Saturday, and Sunday.
+
+        Args:
+            today: datetime object for current date
+
+        Returns:
+            Tuple of (friday_str, saturday_str, sunday_str) in format "8 Nov 2025"
+        """
+        from datetime import timedelta
+
+        # Get current day of week (0=Monday, 6=Sunday)
+        current_weekday = today.weekday()
+
+        # Calculate days until Friday (4), Saturday (5), Sunday (6)
+        if current_weekday <= 4:  # Monday to Friday
+            days_to_friday = 4 - current_weekday
+        else:  # Saturday or Sunday
+            days_to_friday = 7 - current_weekday + 4
+
+        friday = today + timedelta(days=days_to_friday)
+        saturday = friday + timedelta(days=1)
+        sunday = friday + timedelta(days=2)
+
+        # Format dates without leading zeros (cross-platform)
+        def format_date(dt):
+            """Format date as 'D Mon YYYY' without leading zero."""
+            return f"{dt.day} {dt.strftime('%b')} {dt.year}"
+
+        return (
+            format_date(friday),
+            format_date(saturday),
+            format_date(sunday)
+        )
+
+    def _get_next_weekend(self, today):
+        """
+        Get dates for next weekend's Friday, Saturday, and Sunday.
+
+        Args:
+            today: datetime object for current date
+
+        Returns:
+            Tuple of (friday_str, saturday_str, sunday_str) in format "15 Nov 2025"
+        """
+        from datetime import timedelta
+
+        # Get this weekend's Friday first
+        current_weekday = today.weekday()
+
+        if current_weekday <= 4:  # Monday to Friday
+            days_to_friday = 4 - current_weekday
+        else:  # Saturday or Sunday
+            days_to_friday = 7 - current_weekday + 4
+
+        this_friday = today + timedelta(days=days_to_friday)
+
+        # Next weekend is 7 days after this weekend
+        next_friday = this_friday + timedelta(days=7)
+        next_saturday = next_friday + timedelta(days=1)
+        next_sunday = next_friday + timedelta(days=2)
+
+        # Format dates without leading zeros (cross-platform)
+        def format_date(dt):
+            """Format date as 'D Mon YYYY' without leading zero."""
+            return f"{dt.day} {dt.strftime('%b')} {dt.year}"
+
+        return (
+            format_date(next_friday),
+            format_date(next_saturday),
+            format_date(next_sunday)
+        )
+
+    def _generate_date_context(self):
+        """
+        Generate current date context for LLM to help with relative date understanding.
+
+        Returns:
+            Formatted string with current date and upcoming weekend information
+        """
+        from datetime import datetime
+
+        today = datetime.now()
+
+        # Get weekend dates
+        this_fri, this_sat, this_sun = self._get_this_weekend(today)
+        next_fri, next_sat, next_sun = self._get_next_weekend(today)
+
+        # Format today's date (cross-platform)
+        today_str = f"{today.strftime('%A')}, {today.day} {today.strftime('%B')} {today.year}"
+
+        # Format context with clear markers to prevent hallucination
+        return f"""[DATE CONTEXT - For Reference Only:
+Today: {today_str}
+This Weekend: Fri {this_fri}, Sat {this_sat}, Sun {this_sun}
+Next Weekend: Fri {next_fri}, Sat {next_sat}, Sun {next_sun}]"""
