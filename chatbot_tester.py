@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import os
 import sys
+import asyncio
 from dotenv import load_dotenv
 from modules.config_loader import load_yaml
 from modules.google_sheets_agent import GoogleSheetsAgent
@@ -45,7 +46,7 @@ print(f"Using LLM: {provider.upper()} - {model or 'default model'}")
 # --- Initialize modular components ---
 intent_detector = IntentDetector(llm, "config/intent_prompt.txt")
 sheet_agent = GoogleSheetsAgent(sheet_url=SHEET_URL)
-session_manager = SessionManager(window_size=5)
+session_manager = SessionManager(window_size=8)
 conversation_agent = ConversationAgent(llm, business_config, session_manager)
 
 # --- Initialize modular chatbot ---
@@ -59,7 +60,8 @@ chatbot = ModularChatbot(
 )
 
 # --- Simulated chat loop for testing ---
-if __name__ == "__main__":
+async def main():
+    """Main async chat loop for testing the chatbot."""
     print(f"=== Modular Chatbot for {business_config['business_name']} ===")
     print("Features:")
     print("  - Conversational AI (answers questions naturally)")
@@ -94,12 +96,20 @@ if __name__ == "__main__":
             user_handle = None
             continue
 
-        # Process message through modular chatbot
-        reply = chatbot.process_message(
-            session_id=session_id,
-            name=user_name,
-            handle=user_handle,
-            message=msg
-        )
+        # Process message through modular chatbot (async call)
+        try:
+            reply = await chatbot.process_message(
+                session_id=session_id,
+                name=user_name,
+                handle=user_handle,
+                message=msg,
+                user_username=user_handle
+            )
+            print(f"Bot: {reply}\n")
+        except Exception as e:
+            print(f"❌ Error processing message: {e}\n")
+            import traceback
+            traceback.print_exc()
 
-        print(f"Bot: {reply}\n")
+if __name__ == "__main__":
+    asyncio.run(main())

@@ -44,7 +44,7 @@ llm = get_llm(provider=provider, model=model)
 
 intent_detector = IntentDetector(llm, "config/intent_prompt.txt")
 sheet_agent = GoogleSheetsAgent(sheet_url=SHEET_URL)
-session_manager = SessionManager(window_size=5)
+session_manager = SessionManager(window_size=8)
 conversation_agent = ConversationAgent(llm, business_config, session_manager)
 
 # Initialize chatbot without bot_application first (will be set later)
