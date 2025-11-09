@@ -2,6 +2,7 @@ import re
 from datetime import datetime, timedelta
 from typing import Tuple, Optional
 from dateutil import parser as date_parser
+from zoneinfo import ZoneInfo
 
 
 class DateValidator:
@@ -53,7 +54,9 @@ class DateValidator:
             return None
 
         if reference_date is None:
-            reference_date = datetime.now()
+            # Use Singapore timezone (UTC+8) for accurate date parsing
+            singapore_tz = ZoneInfo("Asia/Singapore")
+            reference_date = datetime.now(singapore_tz)
 
         # Normalize input
         text = user_input.lower().strip()
@@ -199,7 +202,9 @@ Return ONLY the date in DD/MM/YYYY format, nothing else. No explanation."""
             validate_date(datetime(2025, 11, 15), "Friday 3-4pm") → (True, None)
             validate_date(datetime(2025, 11, 15), "Saturday 3-4pm") → (False, "Date is Friday but timeslot is Saturday")
         """
-        today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        # Use Singapore timezone (UTC+8) for accurate date validation
+        singapore_tz = ZoneInfo("Asia/Singapore")
+        today = datetime.now(singapore_tz).replace(hour=0, minute=0, second=0, microsecond=0)
 
         # Check if date is in the future (not today or past)
         if date < today:

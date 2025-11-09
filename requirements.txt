@@ -16,9 +16,14 @@ python-dotenv>=1.0.0
 pyyaml>=6.0
 python-dateutil>=2.8.0
 
-# Web framework (for Instagram webhooks)
-fastapi>=0.104.0
-uvicorn>=0.24.0
+# Web frameworks
+fastapi>=0.104.0              # For FastAPI-based webhooks
+uvicorn>=0.24.0               # ASGI server for FastAPI
+Flask>=3.0.0                  # For Instagram webhook server
+gunicorn>=21.0.0              # WSGI server for Flask (production)
+
+# HTTP client (for Instagram Graph API)
+requests>=2.31.0
 
 # Telegram Bot
 python-telegram-bot>=20.0

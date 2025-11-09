@@ -233,7 +233,7 @@ Only respond according to your system instructions and flow rules defined earlie
                 return f"""[🚫 CRITICAL DATE VALIDATION ERROR - BOOKING BLOCKED 🚫]
 {error_msg}
 
-⚠️ MANDATORY INSTRUCTIONS - DO NOT IGNORE:
+MANDATORY INSTRUCTIONS - DO NOT IGNORE:
 1. You MUST inform the user about this date error
 2. You MUST ask them to provide a correct date that matches their chosen timeslot
 3. You are ABSOLUTELY FORBIDDEN from:
@@ -333,8 +333,11 @@ Respond to the user explaining the date error and ask for a correct date."""
             Formatted string with current date and upcoming weekend information
         """
         from datetime import datetime
+        from zoneinfo import ZoneInfo
 
-        today = datetime.now()
+        # Use Singapore timezone (UTC+8) for accurate date context
+        singapore_tz = ZoneInfo("Asia/Singapore")
+        today = datetime.now(singapore_tz)
 
         # Get weekend dates
         this_fri, this_sat, this_sun = self._get_this_weekend(today)

@@ -22,7 +22,8 @@ class ModularChatbot:
         session_manager: SessionManager = None,
         conversation_agent: Optional[ConversationAgent] = None,
         llm = None,
-        bot_application = None
+        bot_application = None,
+        platform_sender = None
     ):
         """
         Initialize the modular chatbot.
@@ -34,7 +35,8 @@ class ModularChatbot:
             session_manager: Session management module (optional, creates default)
             conversation_agent: Conversational AI module (optional, if None uses generic responses)
             llm: LLM instance for progressive data extraction
-            bot_application: Telegram bot application instance for sending messages
+            bot_application: Telegram bot application instance (deprecated, use platform_sender)
+            platform_sender: Platform-agnostic message sender (Instagram, WhatsApp, etc.)
         """
         self.intent_detector = intent_detector
         self.config = config
@@ -43,7 +45,8 @@ class ModularChatbot:
         self.conversation_agent = conversation_agent
         self.data_extractor = BookingDataExtractor(config, llm=llm)
         self.llm = llm
-        self.bot_application = bot_application
+        self.bot_application = bot_application  # Keep for Telegram compatibility
+        self.platform_sender = platform_sender  # New: platform-agnostic sender
 
     async def process_message(
         self,
@@ -139,19 +142,24 @@ class ModularChatbot:
                         photo_path = os.path.join(os.getcwd(), "image.png")
 
                         if os.path.exists(photo_path):
-                            # session_id is the Telegram user ID (as string)
-                            chat_id = int(session_id)
+                            caption = "🎉 Thank you for booking with 555Beatbox Academy! Please PAYNOW $10 to this QR Code and our team will contact you for confirmation. 🎤"
 
-                            # Send the test photo
+                            # Send the test photo via appropriate platform
                             if self.bot_application:
+                                # Telegram: session_id is user ID (convert to int)
+                                chat_id = int(session_id)
                                 await self.bot_application.bot.send_photo(
                                     chat_id=chat_id,
                                     photo=open(photo_path, 'rb'),
-                                    caption="🎉 Thank you for booking with 555Beatbox Academy! Please PAYNOW $10 to this QR Code and our team will contact you for confirmation. 🎤"
+                                    caption=caption
                                 )
-                                print(f"✅ Test photo sent to user {chat_id}")
+                                print(f"✅ Test photo sent to user {chat_id} (Telegram)")
+                            elif self.platform_sender:
+                                # Instagram/WhatsApp: session_id is IGSID (string)
+                                await self.platform_sender.send_photo(session_id, photo_path, caption)
+                                print(f"✅ Test photo sent to user {session_id} (Instagram/WhatsApp)")
                             else:
-                                print(f"⚠️ Warning: bot_application not available (running in test mode)")
+                                print(f"⚠️ Warning: No message sender available (running in test mode)")
                         else:
                             print(f"⚠️ Warning: Test photo not found at {photo_path}")
                     except Exception as e:

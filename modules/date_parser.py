@@ -2,6 +2,7 @@ import re
 from datetime import datetime, timedelta
 from typing import Tuple, Optional
 from dateutil import parser as date_parser
+from zoneinfo import ZoneInfo
 
 
 class DateParser:
@@ -59,7 +60,9 @@ class DateParser:
             - needs_clarification: True if LLM returned -1 (uncertain)
         """
         if reference_date is None:
-            reference_date = datetime.now()
+            # Use Singapore timezone (UTC+8) for accurate date parsing
+            singapore_tz = ZoneInfo("Asia/Singapore")
+            reference_date = datetime.now(singapore_tz)
 
         # STEP 1: Try to find explicit date (comprehensive patterns)
         explicit_date = self._extract_explicit_date(user_input, reference_date)

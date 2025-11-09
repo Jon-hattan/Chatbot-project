@@ -6,6 +6,7 @@ Provides timestamped, colored logging for different operations.
 
 from datetime import datetime
 from typing import Optional
+from zoneinfo import ZoneInfo
 
 
 def log(message: str, emoji: str = "ℹ️", end: str = "\n"):
@@ -17,7 +18,9 @@ def log(message: str, emoji: str = "ℹ️", end: str = "\n"):
         emoji: Emoji prefix for the message
         end: String to append at end (default newline)
     """
-    timestamp = datetime.now().strftime("%H:%M:%S")
+    # Use Singapore timezone (UTC+8) for accurate timestamps
+    singapore_tz = ZoneInfo("Asia/Singapore")
+    timestamp = datetime.now(singapore_tz).strftime("%H:%M:%S")
     print(f"[{timestamp}] {emoji} {message}", end=end, flush=True)
 
 

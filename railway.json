@@ -4,7 +4,7 @@
     "builder": "NIXPACKS"
   },
   "deploy": {
-    "startCommand": "python telegram_bot.py",
+    "startCommand": "gunicorn -w 4 -b 0.0.0.0:$PORT instagram_bot:app",
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 10
   }

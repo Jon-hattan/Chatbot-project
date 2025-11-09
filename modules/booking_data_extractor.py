@@ -3,6 +3,7 @@ from datetime import datetime
 from typing import Dict, Optional, List
 from langchain_core.messages import HumanMessage, AIMessage
 from modules.date_validator import DateValidator
+from zoneinfo import ZoneInfo
 
 
 class BookingDataExtractor:
@@ -89,7 +90,9 @@ class BookingDataExtractor:
             if auto_generate:
                 # Auto-generate fields (like Timestamp)
                 if field_name == "Timestamp":
-                    data[field_name] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    # Use Singapore timezone (UTC+8) for accurate timestamp
+                    singapore_tz = ZoneInfo("Asia/Singapore")
+                    data[field_name] = datetime.now(singapore_tz).strftime("%Y-%m-%d %H:%M:%S")
                 continue
 
             # Extract using regex pattern
